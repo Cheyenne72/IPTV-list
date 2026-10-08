@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+<meta name="theme-color" content="#080a0f">
+<title>Web TV Italia</title>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;font-family:Arial,Helvetica,sans-serif;background:#080a0f;color:#fff}
+body{user-select:none}
+.header{height:72px;background:#0d1017;border-bottom:1px solid #242a35;display:flex;align-items:center;gap:18px;padding:0 22px;position:relative;z-index:100}
+.logo{font-size:23px;font-weight:900;white-space:nowrap}.logo span{color:#e50914}
+.nav{display:flex;align-items:center;gap:7px}
+.nav button,.refresh-btn{background:#151922;color:#ddd;border:1px solid #303744;border-radius:6px;padding:10px 14px;font-size:14px;font-weight:bold;cursor:pointer}
+.nav button.active{background:#e50914;color:#fff;border-color:#e50914}
+.search-box{margin-left:auto;display:flex;align-items:center}
+.search-box input{width:230px;height:40px;border-radius:6px;border:1px solid #303744;background:#11151d;color:#fff;padding:0 12px;font-size:14px}
+.refresh-btn{font-size:20px;width:42px;height:40px;padding:0}
+#home{height:calc(100vh - 72px);overflow-y:auto;overflow-x:hidden;padding:28px}
+.hero{min-height:230px;border-radius:14px;padding:35px;display:flex;flex-direction:column;justify-content:center;background:linear-gradient(90deg,rgba(0,0,0,.9),rgba(0,0,0,.3)),linear-gradient(135deg,#191e29,#090b10);border:1px solid #272e3a;margin-bottom:28px}
+.hero h1{font-size:38px;margin-bottom:12px}.hero p{color:#aeb5c1;max-width:700px;line-height:1.5;font-size:16px}
+.section-title{font-size:22px;margin:25px 0 14px}
+.home-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px}
+.category-card{min-height:130px;background:#11151d;border:1px solid #292f3a;border-radius:10px;padding:22px;cursor:pointer;transition:.15s}
+.category-card:hover{background:#181d27}.category-card h3{font-size:20px;margin-bottom:9px}.category-card p{color:#8e97a6;font-size:14px}
+#playerView{display:none;width:100%;height:calc(100vh - 72px)}
+.player-layout{display:grid;grid-template-columns:minmax(0,1fr) 390px;width:100%;height:100%}
+.player-area{min-width:0;min-height:0;background:#000;display:flex;flex-direction:column}
+.player-topbar{min-height:58px;background:#0d1017;border-bottom:1px solid #242a35;display:flex;align-items:center;justify-content:space-between;gap:15px;padding:6px 12px}
+#nowPlaying{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:17px;font-weight:bold}
+.player-controls{display:flex;align-items:center;gap:8px}
+.player-controls button{width:54px;height:46px;padding:0;background:#b58a20;border:2px solid #e0b93f;color:#fff4b0;border-radius:7px;font-size:22px;font-weight:900;line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:0 0 8px rgba(224,185,63,.28);cursor:pointer}
+.player-controls button:hover{background:#d2a82d;color:#fff;border-color:#f0cc55}
+.player-controls button:focus{background:#d2a82d!important;color:#fff!important;border:2px solid #fff!important;outline:3px solid #fff!important;outline-offset:2px;transform:scale(1.08);box-shadow:0 0 15px rgba(224,185,63,.7)}
+#video{width:100%;height:calc(100% - 58px);background:#000;object-fit:contain}
+.sidebar{background:#0d1017;border-left:1px solid #272d38;display:flex;flex-direction:column;min-height:0}
+.sidebar-search{padding:12px;border-bottom:1px solid #242a35}
+.sidebar-search input{width:100%;height:40px;background:#151922;border:1px solid #303744;color:#fff;border-radius:6px;padding:0 12px;font-size:14px}
+.playlist-tabs{display:flex;padding:10px;gap:6px;border-bottom:1px solid #242a35}
+.playlist-tabs button{flex:1;background:#151922;color:#aaa;border:1px solid #303744;border-radius:5px;padding:9px 5px;font-size:12px;font-weight:bold}
+.playlist-tabs button.active{background:#e50914;border-color:#e50914;color:#fff}
+.category-tabs{display:flex;gap:6px;overflow-x:auto;padding:10px;border-bottom:1px solid #242a35}
+.category-tabs button{flex:none;background:#151922;border:1px solid #303744;color:#aaa;padding:8px 11px;border-radius:5px;font-size:12px}
+.category-tabs button.active{background:#292f3a;color:#fff}
+.channel-list{flex:1;min-height:0;overflow-y:auto;padding:8px;scroll-behavior:smooth}
+.channel-item{min-height:70px;display:flex;align-items:center;gap:12px;padding:9px;border-radius:7px;margin-bottom:5px;background:#11151d;border:1px solid transparent;cursor:pointer}
+.channel-item:hover{background:#191e27}.channel-item.active{border-color:#e50914;background:#191e27}
+.channel-logo{width:62px;height:45px;flex-shrink:0;object-fit:contain;background:#090b0f;border-radius:5px}
+.channel-info{min-width:0}.channel-name{font-size:14px;font-weight:bold;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.channel-group{color:#858e9d;font-size:11px;margin-top:5px}
+button:focus,input:focus,.channel-card:focus,.channel-item:focus,.category-card:focus{outline:3px solid #fff!important;outline-offset:3px;z-index:50}
+.home-row{margin-bottom:30px}.home-row-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.home-row-header h2{font-size:22px}.home-row-header button{background:#151922;border:1px solid #303744;color:#ccc;padding:8px 13px;border-radius:5px}
+.channel-cards{display:flex;gap:12px;overflow-x:auto;padding-bottom:8px}
+.channel-card{width:180px;min-width:180px;height:125px;background:#11151d;border:1px solid #292f3a;border-radius:8px;padding:10px;cursor:pointer}
+.channel-card:hover{background:#181d27}.channel-card img{width:100%;height:75px;object-fit:contain;background:#090b0f;border-radius:5px}
+.channel-card .name{margin-top:8px;font-size:13px;font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.empty{color:#7e8795;text-align:center;padding:35px 10px}
+@media(max-width:900px){
+html,body{overflow:auto}.header{height:auto;min-height:64px;flex-wrap:wrap;padding:10px;gap:8px}
+.logo{font-size:18px}.nav{order:3;width:100%;overflow-x:auto}.nav button{flex:none}
+.search-box{margin-left:auto}.search-box input{width:150px}
+#home{height:auto;min-height:calc(100vh - 64px);padding:16px}
+#playerView{height:calc(100vh - 64px)}.player-layout{grid-template-columns:1fr;grid-template-rows:55% 45%}
+.sidebar{border-left:none;border-top:1px solid #272d38}
+.player-controls button{width:44px;height:40px;font-size:18px}
+}
+@media(max-width:550px){
+.hero{min-height:190px;padding:22px}.hero h1{font-size:27px}.hero p{font-size:14px}
+.home-grid{grid-template-columns:1fr 1fr}.category-card{min-height:105px;padding:15px}
+.category-card h3{font-size:16px}.search-box input{width:125px}
+.player-controls{gap:4px}.player-controls button{width:38px;height:36px;font-size:16px}
+#nowPlaying{font-size:13px}
+}
+</style>
+</head>
+<body>
+<header class="header">
+<div class="logo">WEB TV <span>ITALIA</span></div>
+<nav class="nav">
+<button id="navHome" tabindex="0" onclick="showHome()">Home</button>
+<button id="navTV" tabindex="0" onclick="openPlaylist('tv')">TV Live</button>
+<button id="navVOD" tabindex="0" onclick="openPlaylist('vod')">VOD Italia</button>
+<button id="navFav" tabindex="0" onclick="openFavorites()">Preferiti</button>
+</nav>
+<div class="search-box"><input id="globalSearch" tabindex="0" type="text" placeholder="Cerca..." autocomplete="off" oninput="globalSearch()"></div>
+<button class="refresh-btn" tabindex="0" onclick="reloadAll()">↻</button>
+</header>
+<main id="home">
+<section class="hero"><h1>Web TV Italia</h1><p>Guarda i canali TV italiani e i contenuti VOD. Usa il telecomando per navigare tra categorie, canali, preferiti e ricerca.</p></section>
+<h2 class="section-title">Categorie</h2>
+<div class="home-grid">
+<div class="category-card" tabindex="0" onclick="openPlaylist('tv')"><h3>📺 TV Italia</h3><p>Canali televisivi italiani in diretta.</p></div>
+<div class="category-card" tabindex="0" onclick="openPlaylist('vod')"><h3>🎬 VOD Italia</h3><p>Film e contenuti video disponibili.</p></div>
+<div class="category-card" tabindex="0" onclick="openFavorites()"><h3>⭐ Preferiti</h3><p>I tuoi canali salvati.</p></div>
+<div class="category-card" tabindex="0" onclick="showAllChannels()"><h3>📡 Tutti</h3><p>Visualizza tutti i canali caricati.</p></div>
+</div><div id="homeRows"></div>
+</main>
+<section id="playerView"><div class="player-layout">
+<div class="player-area">
+<div class="player-topbar"><div id="nowPlaying">Nessun canale selezionato</div>
+<div class="player-controls">
+<button id="prevBtn" tabindex="0" onclick="previousChannel()" title="Canale precedente">▲</button>
+<button id="nextBtn" tabindex="0" onclick="nextChannel()" title="Canale successivo">▼</button>
+<button id="fullscreenBtn" tabindex="0" onclick="toggleFullscreen()" title="Schermo intero">⛶</button>
+<button id="homeBtn" tabindex="0" onclick="showHome()" title="Home">⌂</button>
+</div></div><video id="video" controls autoplay playsinline></video>
+</div>
+<aside class="sidebar">
+<div class="sidebar-search"><input id="sidebarSearch" tabindex="0" type="text" placeholder="Cerca canale..." autocomplete="off" oninput="filterChannels()"></div>
+<div class="playlist-tabs">
+<button id="tabTV" tabindex="0" onclick="switchPlaylist('tv')">TV LIVE</button>
+<button id="tabVOD" tabindex="0" onclick="switchPlaylist('vod')">VOD</button>
+<button id="tabFav" tabindex="0" onclick="openFavorites()">★</button>
+</div>
+<div id="categoryTabs" class="category-tabs"></div><div id="channelList" class="channel-list"></div>
+</aside></div></section>
+<script>
+const PLAYLISTS={
+ tv:{name:"TV Italia",url:"https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_italy.m3u8"},
+ vod:{name:"VOD Italia",url:"https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_zz_vod_it.m3u8"}
+};
+let playlists={tv:[],vod:[]};
+let favorites=JSON.parse(localStorage.getItem("webtvitalia_favorites")||"[]");
+let currentPlaylist="tv",currentCategory="Tutti",currentIndex=-1,currentChannel=null,hls=null,showingFavorites=false;
+const video=document.getElementById("video"),home=document.getElementById("home"),playerView=document.getElementById("playerView"),channelList=document.getElementById("channelList"),categoryTabs=document.getElementById("categoryTabs"),nowPlaying=document.getElementById("nowPlaying");
+function parseM3U(text){
+ const lines=text.replace(/\r/g,"").split("\n"),result=[];let current=null;
+ for(let lineRaw of lines){const line=lineRaw.trim();if(!line)continue;
+  if(line.startsWith("#EXTINF")){const comma=line.indexOf(","),title=comma>=0?line.substring(comma+1).trim():"Canale";
+   const getAttr=name=>{const match=line.match(new RegExp(name+'="([^"]*)"',"i"));return match?match[1]:"";};
+   current={name:title,group:getAttr("group-title")||"Italia",logo:getAttr("tvg-logo"),id:getAttr("tvg-id"),chno:getAttr("tvg-chno"),url:""};
+  }else if(!line.startsWith("#")&&current){current.url=line;result.push(current);current=null;}
+ }return result;
+}
+async function loadPlaylist(type){try{const response=await fetch(PLAYLISTS[type].url,{cache:"no-store"});if(!response.ok)throw new Error("HTTP "+response.status);playlists[type]=parseM3U(await response.text());removeDuplicates(type);}catch(error){console.error("Errore playlist",type,error);playlists[type]=[];}}
+function removeDuplicates(type){const seen=new Set();playlists[type]=playlists[type].filter(channel=>{const key=channel.url.trim();if(!key||seen.has(key))return false;seen.add(key);return true;});}
+async function init(){await Promise.all([loadPlaylist("tv"),loadPlaylist("vod")]);renderHomeRows();renderCategories();renderChannels();showHome();setTimeout(()=>{const first=document.querySelector(".category-card");if(first)first.focus();},300);}
+init();
+function showHome(){home.style.display="block";playerView.style.display="none";setActiveNav("navHome");video.pause();setTimeout(()=>{const first=document.querySelector(".category-card");if(first)first.focus();},50);}
+function renderHomeRows(){const container=document.getElementById("homeRows");container.innerHTML="";createHomeRow(container,"TV Italia",playlists.tv,"tv");createHomeRow(container,"VOD Italia",playlists.vod,"vod");}
+function createHomeRow(container,title,items,type){if(!items.length)return;const row=document.createElement("div");row.className="home-row";const header=document.createElement("div");header.className="home-row-header";const h2=document.createElement("h2");h2.textContent=title;const more=document.createElement("button");more.tabIndex=0;more.textContent="Vedi tutti";more.onclick=()=>openPlaylist(type);header.append(h2,more);const cards=document.createElement("div");cards.className="channel-cards";
+items.slice(0,15).forEach((channel,index)=>{const card=document.createElement("div");card.className="channel-card";card.tabIndex=0;const img=document.createElement("img");img.src=channel.logo||createLogoFallback(channel.name);img.onerror=()=>{img.src=createLogoFallback(channel.name);};const name=document.createElement("div");name.className="name";name.textContent=channel.name;card.append(img,name);card.onclick=()=>openChannel(type,index);cards.appendChild(card);});row.append(header,cards);container.appendChild(row);}
+function openPlaylist(type){currentPlaylist=type;currentCategory="Tutti";showingFavorites=false;home.style.display="none";playerView.style.display="block";setActiveNav(type==="tv"?"navTV":"navVOD");document.getElementById("tabTV").classList.toggle("active",type==="tv");document.getElementById("tabVOD").classList.toggle("active",type==="vod");document.getElementById("tabFav").classList.remove("active");renderCategories();renderChannels();setTimeout(()=>{const first=document.querySelector(".channel-item");if(first)first.focus();},100);}
+function switchPlaylist(type){openPlaylist(type);}
+function renderCategories(){categoryTabs.innerHTML="";const items=playlists[currentPlaylist]||[],groups=["Tutti",...new Set(items.map(x=>x.group||"Italia"))];groups.forEach(group=>{const button=document.createElement("button");button.tabIndex=0;button.textContent=group;button.className=group===currentCategory?"active":"";button.onclick=()=>{currentCategory=group;renderCategories();renderChannels();};categoryTabs.appendChild(button);});}
+function getVisibleChannels(){if(showingFavorites){const all=[...playlists.tv,...playlists.vod];return all.filter(channel=>favorites.includes(channel.url));}let items=playlists[currentPlaylist]||[];if(currentCategory!=="Tutti")items=items.filter(channel=>(channel.group||"Italia")===currentCategory);return items;}
+function makeChannelItem(channel,clickHandler){const item=document.createElement("div");item.className="channel-item";item.tabIndex=0;if(currentChannel&&currentChannel.url===channel.url)item.classList.add("active");const img=document.createElement("img");img.className="channel-logo";img.src=channel.logo||createLogoFallback(channel.name);img.onerror=()=>{img.src=createLogoFallback(channel.name);};const info=document.createElement("div");info.className="channel-info";const name=document.createElement("div");name.className="channel-name";name.textContent=(channel.chno?channel.chno+" - ":"")+channel.name;const group=document.createElement("div");group.className="channel-group";group.textContent=channel.group||"Italia";info.append(name,group);item.append(img,info);item.onclick=clickHandler;return item;}
+function renderChannels(){channelList.innerHTML="";const items=getVisibleChannels();if(!items.length){channelList.innerHTML='<div class="empty">Nessun canale disponibile.</div>';return;}items.forEach(channel=>{const item=makeChannelItem(channel,()=>{if(showingFavorites){const tvIndex=playlists.tv.findIndex(x=>x.url===channel.url),vodIndex=playlists.vod.findIndex(x=>x.url===channel.url);if(tvIndex>=0)openChannel("tv",tvIndex);else if(vodIndex>=0)openChannel("vod",vodIndex);}else{openChannel(currentPlaylist,playlists[currentPlaylist].findIndex(x=>x.url===channel.url));}});channelList.appendChild(item);});}
+function filterChannels(){const search=document.getElementById("sidebarSearch").value.trim().toLowerCase();const items=getVisibleChannels().filter(channel=>channel.name.toLowerCase().includes(search)||(channel.group||"").toLowerCase().includes(search));channelList.innerHTML="";if(!items.length){channelList.innerHTML='<div class="empty">Nessun risultato.</div>';return;}items.forEach(channel=>{const item=makeChannelItem(channel,()=>{const type=playlists.tv.some(x=>x.url===channel.url)?"tv":"vod";openChannel(type,playlists[type].findIndex(x=>x.url===channel.url));});channelList.appendChild(item);});}
+function openChannel(type,index){if(!playlists[type]||index<0||index>=playlists[type].length)return;currentPlaylist=type;currentIndex=index;currentChannel=playlists[type][index];showingFavorites=false;home.style.display="none";playerView.style.display="block";setActiveNav(type==="tv"?"navTV":"navVOD");document.getElementById("tabTV").classList.toggle("active",type==="tv");document.getElementById("tabVOD").classList.toggle("active",type==="vod");document.getElementById("tabFav").classList.remove("active");nowPlaying.textContent=currentChannel.name;playUrl(currentChannel.url);renderCategories();renderChannels();setTimeout(()=>{const active=document.querySelector(".channel-item.active");if(active){active.focus();active.scrollIntoView({block:"nearest",inline:"nearest"});}},100);}
+function playUrl(url){if(hls){try{hls.destroy();}catch(e){}hls=null;}video.pause();video.removeAttribute("src");video.load();if(video.canPlayType("application/vnd.apple.mpegurl")){video.src=url;video.play().catch(()=>{});return;}if(window.Hls&&Hls.isSupported()){hls=new Hls({enableWorker:true});hls.loadSource(url);hls.attachMedia(video);hls.on(Hls.Events.MANIFEST_PARSED,()=>video.play().catch(()=>{}));return;}video.src=url;video.play().catch(()=>{});}
+function nextChannel(){const items=playlists[currentPlaylist]||[];if(!items.length)return;let index=currentIndex+1;if(index>=items.length)index=0;openChannel(currentPlaylist,index);}
+function previousChannel(){const items=playlists[currentPlaylist]||[];if(!items.length)return;let index=currentIndex-1;if(index<0)index=items.length-1;openChannel(currentPlaylist,index);}
+function toggleFavorite(){if(!currentChannel)return;const url=currentChannel.url;if(favorites.includes(url))favorites=favorites.filter(x=>x!==url);else favorites.push(url);localStorage.setItem("webtvitalia_favorites",JSON.stringify(favorites));renderChannels();}
+function openFavorites(){showingFavorites=true;home.style.display="none";playerView.style.display="block";document.getElementById("tabTV").classList.remove("active");document.getElementById("tabVOD").classList.remove("active");document.getElementById("tabFav").classList.add("active");setActiveNav("navFav");currentCategory="Tutti";renderCategories();renderChannels();setTimeout(()=>{const first=document.querySelector(".channel-item");if(first)first.focus();},100);}
+function showAllChannels(){openPlaylist("tv");}
+function globalSearch(){const value=document.getElementById("globalSearch").value.trim().toLowerCase();if(!value){if(playerView.style.display==="block")renderChannels();return;}const all=[...playlists.tv.map(x=>({...x,type:"tv"})),...playlists.vod.map(x=>({...x,type:"vod"}))],results=all.filter(channel=>channel.name.toLowerCase().includes(value)||(channel.group||"").toLowerCase().includes(value));home.style.display="none";playerView.style.display="block";showingFavorites=false;setActiveNav("");channelList.innerHTML="";if(!results.length){channelList.innerHTML='<div class="empty">Nessun canale trovato.</div>';return;}results.forEach(channel=>{const item=makeChannelItem(channel,()=>openChannel(channel.type,playlists[channel.type].findIndex(x=>x.url===channel.url)));channelList.appendChild(item);});}
+function toggleFullscreen(){const target=document.querySelector(".player-area");if(!document.fullscreenElement){if(target.requestFullscreen)target.requestFullscreen().catch(()=>{});}else{document.exitFullscreen().catch(()=>{});}}
+async function reloadAll(){const button=document.querySelector(".refresh-btn");if(button)button.textContent="…";await Promise.all([loadPlaylist("tv"),loadPlaylist("vod")]);renderHomeRows();renderCategories();renderChannels();if(button)button.textContent="↻";}
+function setActiveNav(id){document.querySelectorAll(".nav button").forEach(button=>button.classList.toggle("active",button.id===id));}
+function createLogoFallback(name){return "https://dummyimage.com/300x150/11151d/ffffff&text="+encodeURIComponent((name||"TV").substring(0,12));}
+function normalizeKey(e){if(e.key)return e.key;const code=e.keyCode||e.which;return ({13:"Enter",37:"ArrowLeft",38:"ArrowUp",39:"ArrowRight",40:"ArrowDown",461:"BrowserBack",10009:"BrowserBack",27:"Escape",8:"Backspace"})[code]||"";}
+function getFocusable(){return Array.from(document.querySelectorAll('button,input,.channel-item,.channel-card,.category-card')).filter(el=>el.offsetParent!==null&&!el.disabled);}
+function findSpatialElement(current,direction){const elements=getFocusable();if(!current)return null;const r=current.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;let best=null,bestScore=Infinity;elements.forEach(el=>{if(el===current)return;const er=el.getBoundingClientRect(),x=er.left+er.width/2,y=er.top+er.height/2,dx=x-cx,dy=y-cy;let valid=false;if(direction==="left")valid=dx<-5;if(direction==="right")valid=dx>5;if(direction==="up")valid=dy<-5;if(direction==="down")valid=dy>5;if(!valid)return;const distance=Math.sqrt(dx*dx+dy*dy),alignment=(direction==="left"||direction==="right")?Math.abs(dy):Math.abs(dx),score=distance+alignment*1.7;if(score<bestScore){bestScore=score;best=el;}});return best;}
+function spatialNavigation(e){const key=normalizeKey(e),active=document.activeElement;
+ if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(key)){
+  e.preventDefault();e.stopPropagation();
+  if(active&&active.classList.contains("channel-item")&&(key==="ArrowUp"||key==="ArrowDown")){
+   const items=Array.from(channelList.querySelectorAll(".channel-item"));const i=items.indexOf(active),next=items[i+(key==="ArrowDown"?1:-1)];
+   if(next){next.focus();next.scrollIntoView({behavior:"smooth",block:"nearest",inline:"nearest"});}return;
+  }
+  const next=findSpatialElement(active,({ArrowUp:"up",ArrowDown:"down",ArrowLeft:"left",ArrowRight:"right"})[key]);
+  if(next){next.focus({preventScroll:false});try{next.scrollIntoView({behavior:"smooth",block:"nearest",inline:"nearest"});}catch(err){}}
+  return;
+ }
+ if(key==="Enter"){if(active&&active.tagName!=="INPUT"){e.preventDefault();e.stopPropagation();active.click();}return;}
+ if(key==="BrowserBack"||key==="Escape"||key==="Backspace"){if(active&&active.tagName==="INPUT"&&active.value){return;}e.preventDefault();e.stopPropagation();if(playerView.style.display==="block")showHome();}
+}
+document.addEventListener("keydown",spatialNavigation,true);
+document.addEventListener("keydown",function(e){const code=e.keyCode||e.which;if(code>=48&&code<=57){const index=parseInt(String.fromCharCode(code),10)-1,items=playlists[currentPlaylist]||[];if(index>=0&&index<items.length){e.preventDefault();openChannel(currentPlaylist,index);}}},true);
+document.addEventListener("keydown",function(e){if(String(e.key).toLowerCase()==="f"&&currentChannel){e.preventDefault();toggleFavorite();}},true);
+video.addEventListener("error",()=>{nowPlaying.textContent=currentChannel?currentChannel.name+" — errore riproduzione":"Errore riproduzione";});
+video.addEventListener("playing",()=>{if(currentChannel)nowPlaying.textContent=currentChannel.name;});
+</script>
+</body>
+</html>
