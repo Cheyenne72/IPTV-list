@@ -1,0 +1,15 @@
+{
+  "id": "com.vionic.tvitalia",
+  "version": "1.0.0",
+  "vendor": "TV ITALIA",
+  "type": "web",
+  "main": "index.html",
+  "title": "TV ITALIA",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "appDescription": "TV ITALIA - Player Smart TV",
+  "resolution": "1920x1080",
+  "iconColor": "#07111F",
+  "disableBackHistoryAPI": true,
+  "handlesRelaunch": true
+}
